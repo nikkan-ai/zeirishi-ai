@@ -474,6 +474,84 @@ router.post('/sales/import-csv', requireAuth, upload.single('csvfile'), async (r
   }
 });
 
+// 収集済みCSVプレビュー
+router.get('/sales/leads-preview', requireAuth, async (req, res) => {
+  const fs = require('fs');
+  const csvPath = require('path').join(__dirname, '../scripts/zeirishi_leads.csv');
+  if (!fs.existsSync(csvPath)) {
+    return res.json({ total: 0, newCount: 0, rows: [], message: 'CSVファイルが見つかりません。スクレイパーを実行してください。' });
+  }
+  try {
+    const content = fs.readFileSync(csvPath, 'utf-8').replace(/^\uFEFF/, '');
+    const records = parse(content, { columns: true, skip_empty_lines: true, trim: true });
+    const existing = await db.getOutreach();
+    const existingOffices = new Set(existing.map(r => r.office));
+    const newRecords = records.filter(r => !existingOffices.has(r.office || r['事務所名'] || ''));
+    res.json({ total: records.length, newCount: newRecords.length, rows: newRecords.slice(0, 50) });
+  } catch (e) {
+    res.json({ total: 0, newCount: 0, rows: [], message: 'CSVの読み込みに失敗しました。' });
+  }
+});
+
+// 収集済みCSV一括インポート
+router.post('/sales/import-hyogo', requireAuth, async (req, res) => {
+  const fs = require('fs');
+  const csvPath = require('path').join(__dirname, '../scripts/zeirishi_leads.csv');
+  if (!fs.existsSync(csvPath)) {
+    return res.redirect('/admin/sales?error=no_csv');
+  }
+  try {
+    const content = fs.readFileSync(csvPath, 'utf-8').replace(/^\uFEFF/, '');
+    const records = parse(content, { columns: true, skip_empty_lines: true, trim: true });
+    const existing = await db.getOutreach();
+    const existingOffices = new Set(existing.map(r => r.office));
+    const existingEmails = new Set(existing.map(r => r.email).filter(Boolean));
+
+    let added = 0, skipped = 0;
+    for (const row of records) {
+      const office = row.office || row['事務所名'] || '';
+      const email = row.email || row['メール'] || '';
+      const notes = row.notes || row['HP URL'] || '';
+      const contactName = row.name || row['担当者名'] || '';
+      if (!office || existingOffices.has(office)) { skipped++; continue; }
+      if (email && existingEmails.has(email)) { skipped++; continue; }
+      await db.addOutreach(office, contactName, email, notes);
+      existingOffices.add(office);
+      if (email) existingEmails.add(email);
+      added++;
+    }
+    res.redirect(`/admin/sales?import_added=${added}&import_skipped=${skipped}`);
+  } catch (e) {
+    res.redirect('/admin/sales?error=import_failed');
+  }
+});
+
+// HP URLをCSVからメモ欄に反映
+router.post('/sales/patch-hp-urls', requireAuth, async (req, res) => {
+  const fs = require('fs');
+  const csvPath = require('path').join(__dirname, '../scripts/zeirishi_leads.csv');
+  if (!fs.existsSync(csvPath)) return res.redirect('/admin/sales?error=no_csv');
+  try {
+    const content = fs.readFileSync(csvPath, 'utf-8').replace(/^\uFEFF/, '');
+    const records = parse(content, { columns: true, skip_empty_lines: true, trim: true });
+    const existing = await db.getOutreach();
+    let updated = 0;
+    for (const row of records) {
+      const office = row.office || row['事務所名'] || '';
+      const hp = row.notes || row['HP URL'] || '';
+      if (!office || !hp) continue;
+      const lead = existing.find(r => r.office === office && (!r.notes || r.notes === ''));
+      if (lead) {
+        await db.updateOutreachNotesById(lead.id, hp);
+        updated++;
+      }
+    }
+    res.redirect(`/admin/sales?import_added=${updated}&import_skipped=0`);
+  } catch (e) {
+    res.redirect('/admin/sales?error=import_failed');
+  }
+});
+
 // 事務所名でHP URLを自動検索
 router.post('/sales/find-hp', requireAuth, async (req, res) => {
   const axios = require('axios');
