@@ -259,7 +259,55 @@ async function handleEvent(event, client) {
   ]);
 
   if (event.type === 'follow') {
-    await client.replyMessage(event.replyToken, buildMenuFlex(officeName, welcomeMessage));
+    await client.replyMessage(event.replyToken, {
+      type: 'flex',
+      altText: 'ゼイリAIへようこそ！',
+      contents: {
+        type: 'bubble',
+        size: 'mega',
+        header: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '20px',
+          backgroundColor: '#1A3A6A',
+          contents: [
+            { type: 'text', text: officeName, color: '#a8c8f0', size: 'sm' },
+            { type: 'text', text: 'ゼイリAIへようこそ！', color: '#ffffff', size: 'xl', weight: 'bold', margin: 'xs' },
+          ],
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '20px',
+          spacing: 'md',
+          contents: [
+            { type: 'text', text: 'このアカウントでは、税務・会計に関するご質問にAIが24時間お答えします。', wrap: true, size: 'sm', color: '#333333' },
+            { type: 'separator', margin: 'md', color: '#e0e0e0' },
+            {
+              type: 'box', layout: 'vertical', spacing: 'sm', margin: 'md',
+              contents: [
+                { type: 'text', text: '📄 インボイス・電帳法の対応', size: 'sm', color: '#444444' },
+                { type: 'text', text: '💰 経費・仕訳の考え方', size: 'sm', color: '#444444' },
+                { type: 'text', text: '📊 確定申告・消費税のご質問', size: 'sm', color: '#444444' },
+                { type: 'text', text: '🏢 法人・給与・役員報酬', size: 'sm', color: '#444444' },
+              ],
+            },
+            { type: 'separator', margin: 'md', color: '#e0e0e0' },
+            { type: 'text', text: '下のメニューからカテゴリを選ぶか、直接メッセージを入力してください。', wrap: true, size: 'xs', color: '#888888', margin: 'md' },
+          ],
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '12px',
+          contents: [
+            { type: 'text', text: '※税務判断の最終確認は担当税理士にお問い合わせください', size: 'xxs', color: '#aaaaaa', align: 'center', wrap: true },
+          ],
+          backgroundColor: '#f8f8f8',
+        },
+        styles: { footer: { separator: true } },
+      },
+    });
     return;
   }
 
