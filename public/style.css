@@ -1,0 +1,62 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f5f7fa; color: #333; }
+
+/* ナビ */
+.navbar { background: #00b900; color: white; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px; }
+.nav-brand { font-weight: bold; font-size: 16px; }
+.nav-links { display: flex; gap: 16px; align-items: center; }
+.nav-links a { color: white; text-decoration: none; font-size: 14px; opacity: 0.85; }
+.nav-links a:hover, .nav-links a.active { opacity: 1; text-decoration: underline; }
+.btn-logout { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 4px; }
+
+/* コンテナ */
+.container { max-width: 800px; margin: 32px auto; padding: 0 16px; }
+
+/* ログイン */
+.login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+.login-box h1 { text-align: center; color: #00b900; margin-bottom: 8px; }
+.subtitle { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+
+/* カード */
+.card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+
+h2 { margin: 24px 0 12px; font-size: 18px; color: #333; }
+
+/* フォーム */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #555; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit;
+}
+.form-group input:focus, .form-group textarea:focus { outline: none; border-color: #00b900; }
+.form-group small { display: block; margin-top: 4px; color: #888; font-size: 12px; }
+
+/* ボタン */
+.btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-primary { background: #00b900; color: white; }
+.btn-primary:hover { background: #009900; }
+.btn-secondary { background: #f0f0f0; color: #333; text-decoration: none; display: inline-block; }
+.btn-danger { background: #ff4444; color: white; }
+.btn-danger:hover { background: #cc0000; }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
+.btn-full { width: 100%; }
+
+/* アラート */
+.alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+.alert-error { background: #fff0f0; color: #cc0000; border: 1px solid #ffcccc; }
+.alert-success { background: #f0fff0; color: #006600; border: 1px solid #99cc99; }
+
+/* 会話ログ */
+.conv-item { margin-bottom: 12px; }
+.conv-user { background: #f0f8ff; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; font-size: 14px; }
+.conv-ai { background: #f0fff0; padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+.conv-time { font-size: 11px; color: #999; margin-top: 6px; text-align: right; }
+.conv-meta { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #999; }
+
+/* FAQ */
+.faq-item .faq-q { font-size: 14px; margin-bottom: 6px; }
+.faq-item .faq-a { font-size: 14px; color: #555; }
+
+.empty { color: #999; text-align: center; padding: 20px; }
+.user-id { font-family: monospace; }

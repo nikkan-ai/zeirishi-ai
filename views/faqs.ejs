@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ管理</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs" class="active">FAQ管理</a>
+      <a href="/admin/logs">会話ログ</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales">営業支援</a>
+      <a href="/admin/sales/generate-all">一括メール生成</a>
+      <a href="/contract-template" target="_blank">契約書</a>
+      <a href="/onboarding-guide" target="_blank">手順書</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>FAQ追加</h2>
+    <div class="card">
+      <form method="POST" action="/admin/faqs">
+        <div class="form-group">
+          <label>よくある質問</label>
+          <input type="text" name="question" required placeholder="例: 有給休暇は何日もらえますか？">
+        </div>
+        <div class="form-group">
+          <label>回答</label>
+          <textarea name="answer" rows="3" required placeholder="例: 法律上、6ヶ月継続勤務で..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">追加</button>
+      </form>
+    </div>
+
+    <h2>登録済みFAQ (<%= faqs.length %>件)</h2>
+    <% if (faqs.length === 0) { %>
+      <div class="card"><p class="empty">FAQがまだ登録されていません</p></div>
+    <% } %>
+    <% faqs.forEach(faq => { %>
+      <div class="card faq-item">
+        <div class="faq-q"><strong>Q:</strong> <%= faq.question %></div>
+        <div class="faq-a"><strong>A:</strong> <%= faq.answer %></div>
+        <form method="POST" action="/admin/faqs/delete" style="margin-top:8px">
+          <input type="hidden" name="id" value="<%= faq.id %>">
+          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('削除しますか？')">削除</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>

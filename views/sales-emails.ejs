@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一括営業メール｜ゼイリAI</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .email-card {
+      background: white; border-radius: 16px; padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 24px;
+      border-left: 4px solid #2e86c1;
+    }
+    .email-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+    }
+    .email-office { font-size: 1rem; font-weight: 800; color: #1a3a5c; }
+    .email-to {
+      font-size: 0.82rem; color: #7f8c8d; margin-top: 4px;
+    }
+    .email-to a { color: #2e86c1; }
+    .email-body {
+      background: #f8fafc; border: 1px solid #dde3ea;
+      border-radius: 10px; padding: 16px; position: relative;
+    }
+    .email-body textarea {
+      width: 100%; font-size: 0.88rem; line-height: 1.8;
+      color: #2c3e50; font-family: inherit; border: none;
+      background: transparent; resize: vertical; outline: none;
+      min-height: 200px;
+    }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-copy {
+      background: #2e86c1; color: white; border: none;
+      border-radius: 6px; padding: 7px 16px; font-size: 0.82rem;
+      cursor: pointer; font-weight: 700;
+    }
+    .btn-copy:hover { background: #1a6fa8; }
+    .btn-form {
+      background: #06c755; color: white; border: none;
+      border-radius: 6px; padding: 7px 16px; font-size: 0.82rem;
+      cursor: pointer; font-weight: 700; text-decoration: none;
+      display: inline-block;
+    }
+    .btn-sent {
+      background: #27ae60; color: white; border: none;
+      border-radius: 6px; padding: 7px 16px; font-size: 0.82rem;
+      cursor: pointer; font-weight: 700;
+    }
+    .btn-sent.done {
+      background: #e74c3c;
+    }
+    .badge-type {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .badge-email { background: #eaf4fb; color: #2e86c1; }
+    .badge-form { background: #e8f8f5; color: #1abc9c; }
+    .summary-bar {
+      background: #1a3a5c; color: white; border-radius: 12px;
+      padding: 16px 24px; margin-bottom: 28px;
+      display: flex; gap: 32px; flex-wrap: wrap; align-items: center;
+    }
+    .summary-bar span { font-size: 0.88rem; opacity: 0.85; }
+    .summary-bar strong { font-size: 1.2rem; color: #f39c12; }
+
+    /* 確認モーダル */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white; border-radius: 16px; padding: 28px;
+      max-width: 600px; width: 90%; max-height: 80vh;
+      overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .modal h3 { margin: 0 0 8px; color: #1a3a5c; font-size: 1rem; }
+    .modal .modal-to { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 16px; }
+    .modal pre {
+      background: #f8fafc; border: 1px solid #dde3ea; border-radius: 8px;
+      padding: 14px; font-size: 0.85rem; line-height: 1.8;
+      white-space: pre-wrap; font-family: inherit; margin-bottom: 20px;
+    }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel {
+      background: #ecf0f1; color: #7f8c8d; border: none;
+      border-radius: 8px; padding: 10px 22px; font-weight: 700; cursor: pointer;
+    }
+    .btn-confirm {
+      background: #ea4335; color: white; border: none;
+      border-radius: 8px; padding: 10px 22px; font-weight: 700; cursor: pointer;
+    }
+    .btn-confirm:disabled { background: #aaa; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<!-- 確認モーダル -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h3 id="modal-subject"></h3>
+    <div class="modal-to" id="modal-to"></div>
+    <pre id="modal-body"></pre>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-confirm" id="modal-send-btn" onclick="confirmSend()">この内容で送信する</button>
+    </div>
+  </div>
+</div>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs">FAQ管理</a>
+      <a href="/admin/logs">会話ログ</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales" style="font-weight:bold;">営業支援</a>
+      <a href="/contract-template" target="_blank">契約書</a>
+      <a href="/onboarding-guide" target="_blank">手順書</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+      <h2 style="margin:0;"><%= locals.pageTitle || '一括営業メール生成結果' %></h2>
+      <a href="/admin/sales" style="font-size:0.85rem; color:#7f8c8d;">← 営業リストに戻る</a>
+      <a href="/admin/sales/view-emails" style="margin-left:auto;background:#7f8c8d;color:white;padding:9px 20px;border-radius:8px;font-weight:700;font-size:0.88rem;text-decoration:none;">再表示</a>
+      <a href="/admin/sales/generate-all" style="background:#2e86c1;color:white;padding:9px 20px;border-radius:8px;font-weight:700;font-size:0.88rem;text-decoration:none;">✨ 次の30件を生成</a>
+    </div>
+
+    <% if (locals.remainingCount > 0) { %>
+    <div style="background:#fff3cd;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#856404;font-weight:700;">
+      ⚠️ 残り <strong><%= locals.remainingCount %></strong> 件。送信済みにした後「次の30件を生成」を押してください。
+    </div>
+    <% } %>
+    <div class="summary-bar">
+      <div><strong><%= results.length %></strong><span> 件のメールを生成</span></div>
+      <div><strong><%= results.filter(r => r.email).length %></strong><span> 件はメール送信</span></div>
+      <div><strong><%= results.filter(r => !r.email).length %></strong><span> 件はフォーム送信</span></div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <button id="send-all-btn" onclick="sendAll()" style="background:#ea4335;color:white;border:none;border-radius:10px;padding:13px 28px;font-weight:700;font-size:0.95rem;cursor:pointer;width:100%;">
+        ✉ メールアドレスあり <%= results.filter(r => r.email).length %> 件を一括送信
+      </button>
+    </div>
+    <div id="send-all-progress" style="display:none;background:#1a3a5c;color:white;border-radius:10px;padding:14px 20px;margin-bottom:16px;font-size:0.88rem;"></div>
+
+    <% results.forEach((r, i) => { %>
+    <div class="email-card">
+      <div class="email-header">
+        <div>
+          <div class="email-office"><%= i + 1 %>. <%= r.office %></div>
+          <div class="email-to">
+            <% if (r.email) { %>
+              送信先: <a href="https://mail.google.com/mail/?view=cm&to=<%= encodeURIComponent(r.email) %>" target="_blank"><%= r.email %></a>
+              <span class="badge-type badge-email">メール</span>
+            <% } else { %>
+              <% const formUrl = (r.notes || '').match(/https?:\/\/[^\s]+/)?.[0] || ''; %>
+              送信先: フォーム
+              <% if (formUrl) { %><a href="<%= formUrl %>" target="_blank"><%= formUrl %></a><% } %>
+              <span class="badge-type badge-form">フォーム</span>
+            <% } %>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn-copy" onclick="copyEmail(<%= i %>)">コピー</button>
+          <% if (r.email) { %>
+            <a href="#" class="btn-form" id="gmail-<%= i %>"
+               onclick="openGmail(<%= i %>, '<%= r.email %>', '<%= r.id %>', '<%= (r.notes || '').replace(/'/g, '') %>'); return false;">Gmailで送る</a>
+          <% } else { %>
+            <button class="btn-copy" onclick="copySubject(<%= i %>)" style="background:#8e44ad;">件名コピー</button>
+            <button class="btn-copy" onclick="copyBody(<%= i %>)" style="background:#e67e22;">本文コピー</button>
+            <% const formUrl3 = (r.notes || '').match(/https?:\/\/[^\s]+/)?.[0]; %>
+            <% if (formUrl3) { %>
+              <a href="<%= formUrl3 %>" target="_blank" class="btn-form">HPを開く</a>
+            <% } else { %>
+              <button class="btn-form" id="hp-btn-<%= r.id %>" style="background:#7f8c8d;" onclick="findHp(this, '<%= r.id %>', '<%= r.office.replace(/'/g,'') %>', '<%= (r.address||'').replace(/'/g,'') %>')">HPを探す</button>
+            <% } %>
+          <% } %>
+          <button class="btn-sent" data-idx="<%= i %>" onclick="markSent(this, '<%= r.id %>', '<%= (r.notes || '').replace(/'/g, '') %>')">送信済にする</button>
+        </div>
+      </div>
+      <div class="email-body">
+        <textarea id="email-text-<%= i %>"><%= r.generatedEmail %></textarea>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+
+  <script>
+    const emails = <%- JSON.stringify(results.map(r => r.generatedEmail)) %>;
+
+    function getEmailText(i) {
+      const ta = document.getElementById('email-text-' + i);
+      return ta ? ta.value : emails[i];
+    }
+
+    async function findHp(btn, id, office, address) {
+      btn.textContent = '検索中...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/admin/sales/find-hp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, office, address }),
+        });
+        const data = await res.json();
+        if (data.url) {
+          // URLが見つかった → ボタンをリンクに差し替えて開く
+          btn.outerHTML = `<a href="${data.url}" target="_blank" class="btn-form">HPを開く</a>`;
+          window.open(data.url, '_blank');
+        } else {
+          btn.textContent = 'HPなし';
+          btn.style.background = '#aaa';
+        }
+      } catch(e) {
+        btn.textContent = 'エラー';
+        btn.disabled = false;
+      }
+    }
+
+    function copyEmail(i) {
+      const text = getEmailText(i);
+      const btn = event.target;
+      // clipboard API が使えない場合はtextareaフォールバック
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = '✓ コピー済';
+          setTimeout(() => { if (btn.textContent === '✓ コピー済') btn.textContent = 'コピー'; }, 1500);
+        }).catch(() => fallbackCopy(text));
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function copySubject(i) {
+      const text = getEmailText(i);
+      const lines = text.split('\n');
+      const subjectLine = lines.find(l => /^件名[：:]/.test(l));
+      const subject = subjectLine ? subjectLine.replace(/^件名[：:]\s*/, '').trim() : '';
+      const btn = event.target;
+      fallbackCopy(subject);
+      btn.textContent = '✓ コピー済';
+      setTimeout(() => btn.textContent = '件名コピー', 1500);
+    }
+
+    function copyBody(i) {
+      const text = getEmailText(i);
+      const lines = text.split('\n');
+      const subjectLine = lines.find(l => /^件名[：:]/.test(l));
+      const bodyLines = subjectLine ? lines.slice(lines.indexOf(subjectLine) + 1) : lines;
+      const body = bodyLines.join('\n').trim();
+      const btn = event.target;
+      fallbackCopy(body);
+      btn.textContent = '✓ コピー済';
+      setTimeout(() => btn.textContent = '本文コピー', 1500);
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+
+    async function markSent(btn, id, notes) {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.add('done');
+      btn.textContent = '✓ 送信済';
+      const params = new URLSearchParams({ id, notes, status: 'sent' });
+      await fetch('/admin/sales/update', { method: 'POST', body: params, headers: { 'X-Requested-With': 'fetch' } });
+    }
+
+    const allResults = <%- JSON.stringify(results.map(r => ({ id: r.id, email: r.email, notes: r.notes || '' }))) %>;
+
+    async function sendAll() {
+      const emailItems = allResults.filter(r => r.email);
+      if (emailItems.length === 0) { alert('送信対象のメールアドレスがありません'); return; }
+      if (!confirm(`メールアドレスがある${emailItems.length}件を一括送信します。\n内容はテキストエリアで確認済みのものが送信されます。\nよろしいですか？`)) return;
+
+      const btn = document.getElementById('send-all-btn');
+      const progress = document.getElementById('send-all-progress');
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+      progress.style.display = 'block';
+
+      // 各メールの本文・件名をテキストエリアから取得
+      const emails = emailItems.map((r, idx) => {
+        const globalIdx = allResults.indexOf(r);
+        const lines = getEmailText(globalIdx).split('\n');
+        const subjectLine = lines.find(l => /^件名[：:]/.test(l));
+        const subject = subjectLine ? subjectLine.replace(/^件名[：:]\s*/, '').trim() : '';
+        const bodyLines = subjectLine ? lines.slice(lines.indexOf(subjectLine) + 1) : lines;
+        const body = bodyLines.join('\n').trim();
+        return { to: r.email, subject, body, id: r.id, notes: r.notes };
+      });
+
+      let sent = 0, failed = 0;
+      // 10件ずつバッチ送信
+      for (let i = 0; i < emails.length; i += 10) {
+        const batch = emails.slice(i, i + 10);
+        progress.textContent = `送信中... ${Math.min(i + 10, emails.length)} / ${emails.length} 件`;
+        try {
+          const res = await fetch('/admin/sales/send-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emails: batch }),
+          });
+          const data = await res.json();
+          if (data.needAuth) { alert('Gmail未連携です。先にGoogle認証してください。'); break; }
+          if (data.results) {
+            sent += data.results.filter(r => r.success).length;
+            failed += data.results.filter(r => !r.success).length;
+            // 送信済みボタンを更新
+            data.results.forEach(r => {
+              if (r.success) {
+                const idx = allResults.findIndex(a => a.email === r.to);
+                if (idx >= 0) {
+                  const sentBtn = document.querySelector(`[data-idx="${idx}"].btn-sent`);
+                  if (sentBtn) { sentBtn.disabled = true; sentBtn.classList.add('done'); sentBtn.textContent = '✓ 送信済'; }
+                  const gmailBtn = document.getElementById('gmail-' + idx);
+                  if (gmailBtn) { gmailBtn.textContent = '✓ 送信完了'; gmailBtn.style.background = '#27ae60'; }
+                }
+              }
+            });
+          }
+        } catch(e) {
+          failed += batch.length;
+        }
+      }
+      progress.textContent = `✅ 完了：${sent}件送信成功 / ${failed > 0 ? `${failed}件失敗` : '失敗なし'}`;
+      btn.textContent = `✉ 送信完了（${sent}件）`;
+    }
+
+    let pendingSend = null;
+
+    function openGmail(i, toEmail, id, notes) {
+      const lines = getEmailText(i).split('\n');
+      const subjectLine = lines.find(l => /^件名[：:]/.test(l));
+      const subject = subjectLine ? subjectLine.replace(/^件名[：:]\s*/, '').trim() : '';
+      const bodyLines = subjectLine ? lines.slice(lines.indexOf(subjectLine) + 1) : lines;
+      const body = bodyLines.join('\n').trim();
+
+      document.getElementById('modal-subject').textContent = subject;
+      document.getElementById('modal-to').textContent = '送信先: ' + toEmail;
+      document.getElementById('modal-body').textContent = body;
+      document.getElementById('confirmModal').classList.add('active');
+
+      pendingSend = { i, toEmail, id, notes, subject, body };
+    }
+
+    function closeModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+      pendingSend = null;
+    }
+
+    async function confirmSend() {
+      if (!pendingSend) return;
+      const btn = document.getElementById('modal-send-btn');
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+
+      try {
+        const res = await fetch('/admin/sales/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: pendingSend.toEmail, subject: pendingSend.subject, body: pendingSend.body }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const { i, id, notes } = pendingSend;
+          closeModal();
+          // ステータスを送信済みに更新
+          const updateParams = new URLSearchParams({ id, notes: notes || '', status: 'sent' });
+          await fetch('/admin/sales/update', { method: 'POST', body: updateParams, headers: { 'X-Requested-With': 'fetch' } });
+          // ボタンを送信済みに
+          const gmailBtn = document.getElementById('gmail-' + i);
+          const sentBtn = gmailBtn?.closest('.btn-group')?.querySelector('.btn-sent');
+          if (sentBtn) { sentBtn.disabled = true; sentBtn.classList.add('done'); sentBtn.textContent = '✓ 送信済'; }
+          gmailBtn.textContent = '✓ 送信完了';
+          gmailBtn.style.background = '#27ae60';
+        } else if (data.needAuth) {
+          if (confirm('Gmail未連携です。今すぐ連携しますか？')) location.href = '/auth/google';
+        } else {
+          alert('送信エラー: ' + data.error);
+        }
+      } catch(e) {
+        alert('通信エラーが発生しました');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'この内容で送信する';
+      }
+    }
+  </script>
+</body>
+</html>

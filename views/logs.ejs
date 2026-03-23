@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>会話ログ</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs">FAQ管理</a>
+      <a href="/admin/logs" class="active">会話ログ</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>会話ログ（最新100件）</h2>
+    <% if (conversations.length === 0) { %>
+      <div class="card"><p class="empty">会話ログがありません</p></div>
+    <% } %>
+    <% conversations.forEach(c => { %>
+      <div class="card conv-item">
+        <div class="conv-meta">
+          <span class="user-id">ユーザーID: <%= c.user_id.substring(0, 8) %>...</span>
+          <span class="conv-time"><%= new Date(c.created_at).toLocaleString('ja-JP') %></span>
+        </div>
+        <div class="conv-user"><strong>質問:</strong> <%= c.user_message %></div>
+        <div class="conv-ai"><strong>回答:</strong> <%= c.ai_response %></div>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>

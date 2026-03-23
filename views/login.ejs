@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理者ログイン</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h1>管理画面</h1>
+      <p class="subtitle">AIアシスタント管理システム</p>
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+      <form method="POST" action="/admin/login">
+        <div class="form-group">
+          <label>パスワード</label>
+          <input type="password" name="password" required placeholder="管理者パスワード">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">ログイン</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

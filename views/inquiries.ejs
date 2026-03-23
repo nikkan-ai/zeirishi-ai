@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>問い合わせ一覧</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs">FAQ管理</a>
+      <a href="/admin/logs">会話ログ</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales">営業支援</a>
+      <a href="/admin/sales/generate-all">一括メール生成</a>
+      <a href="/contract-template" target="_blank">契約書</a>
+      <a href="/onboarding-guide" target="_blank">手順書</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales" style="font-weight:bold;">営業支援</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+  <div class="container">
+    <h2>問い合わせ一覧（<%= inquiries.length %>件）</h2>
+    <div class="card">
+      <% if (inquiries.length === 0) { %>
+        <p class="empty">まだ問い合わせはありません</p>
+      <% } else { %>
+        <% inquiries.forEach(i => { %>
+          <div class="conv-item">
+            <div><strong>📅 <%= new Date(i.created_at).toLocaleString('ja-JP') %></strong></div>
+            <div>🏢 <strong>事務所名：</strong><%= i.office %></div>
+            <div>👤 <strong>お名前：</strong><%= i.name %></div>
+            <div>📧 <strong>メール：</strong><a href="mailto:<%= i.email %>"><%= i.email %></a></div>
+            <div>💰 <strong>プラン：</strong><%= i.plan || '未選択' %></div>
+            <% if (i.message) { %><div>💬 <strong>メッセージ：</strong><%= i.message %></div><% } %>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

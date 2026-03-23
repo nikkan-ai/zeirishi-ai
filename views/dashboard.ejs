@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理ダッシュボード</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs">FAQ管理</a>
+      <a href="/admin/logs">会話ログ</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales">営業支援</a>
+      <a href="/admin/sales/generate-all">一括メール生成</a>
+      <a href="/contract-template" target="_blank">契約書</a>
+      <a href="/onboarding-guide" target="_blank">手順書</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <% if (typeof query !== 'undefined' && query.saved) { %>
+      <div class="alert alert-success">設定を保存しました</div>
+    <% } %>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:28px;">
+      <a href="/admin/sales" style="display:inline-block;background:#1a3a5c;color:white;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;">📊 営業支援</a>
+      <a href="/admin/sales/generate-all" style="display:inline-block;background:#2e86c1;color:white;padding:12px 24px;border-radius:10px;font-weight:700;text-decoration:none;">✨ 一括メール生成</a>
+    </div>
+
+    <h2>事務所設定</h2>
+    <form method="POST" action="/admin/settings">
+      <div class="card">
+        <div class="form-group">
+          <label>事務所名</label>
+          <input type="text" name="office_name" value="<%= settings.office_name %>" required>
+        </div>
+        <div class="form-group">
+          <label>ウェルカムメッセージ</label>
+          <textarea name="welcome_message" rows="2"><%= settings.welcome_message %></textarea>
+          <small>ユーザーが最初にLINEを開いたときのメッセージ</small>
+        </div>
+        <div class="form-group">
+          <label>AIのキャラクター設定</label>
+          <textarea name="system_prompt" rows="5"><%= settings.system_prompt %></textarea>
+          <small>AIがどのように振る舞うかを指定します</small>
+        </div>
+        <div class="form-group">
+          <label>管理者パスワード変更（変更する場合のみ入力）</label>
+          <input type="password" name="admin_password" placeholder="新しいパスワード">
+        </div>
+        <button type="submit" class="btn btn-primary">設定を保存</button>
+      </div>
+    </form>
+
+    <h2>最近の会話</h2>
+    <div class="card">
+      <% if (conversations.length === 0) { %>
+        <p class="empty">まだ会話がありません</p>
+      <% } else { %>
+        <% conversations.forEach(c => { %>
+          <div class="conv-item">
+            <div class="conv-user"><strong>ユーザー:</strong> <%= c.user_message %></div>
+            <div class="conv-ai"><strong>AI:</strong> <%= c.ai_response %></div>
+            <div class="conv-time"><%= new Date(c.created_at).toLocaleString('ja-JP') %></div>
+          </div>
+        <% }) %>
+        <a href="/admin/logs" class="btn btn-secondary">すべて見る</a>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

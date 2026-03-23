@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>営業支援｜ゼイリAI</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .sales-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+    .agent-card {
+      background: white; border-radius: 16px; padding: 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      border-top: 4px solid #2e86c1;
+    }
+    .agent-card h3 { font-size: 1rem; font-weight: 800; margin-bottom: 6px; color: #1a3a5c; }
+    .agent-card p { font-size: 0.83rem; color: #7f8c8d; margin-bottom: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .form-row input, .agent-card input, .agent-card select {
+      width: 100%; padding: 9px 12px; border: 1px solid #dde3ea;
+      border-radius: 8px; font-size: 0.88rem; margin-bottom: 8px;
+    }
+    .btn-agent {
+      width: 100%; padding: 11px; background: #1a3a5c; color: white;
+      border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-agent:hover { background: #2e86c1; }
+    .result-box {
+      display: none; margin-top: 16px;
+      background: #f8fafc; border: 1px solid #dde3ea;
+      border-radius: 10px; padding: 16px; position: relative;
+    }
+    .result-box pre {
+      white-space: pre-wrap; font-size: 0.85rem; line-height: 1.7;
+      color: #2c3e50; font-family: inherit;
+    }
+    .btn-copy {
+      position: absolute; top: 10px; right: 10px;
+      background: #2e86c1; color: white; border: none;
+      border-radius: 6px; padding: 5px 12px; font-size: 0.78rem;
+      cursor: pointer; font-weight: 700;
+    }
+    .btn-copy:hover { background: #1a6fa8; }
+    .btn-gmail {
+      position: absolute; top: 10px; right: 80px;
+      background: #ea4335; color: white; border: none;
+      border-radius: 6px; padding: 5px 12px; font-size: 0.78rem;
+      cursor: pointer; font-weight: 700;
+    }
+    .btn-gmail:hover { background: #c62828; }
+    .loading { color: #7f8c8d; font-size: 0.85rem; text-align: center; padding: 12px; }
+
+    /* ステータスバッジ */
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .badge-pending  { background: #fef9e7; color: #f39c12; }
+    .badge-sent     { background: #eaf4fb; color: #2e86c1; }
+    .badge-replied  { background: #e8f8f5; color: #1abc9c; }
+    .badge-meeting  { background: #f5eef8; color: #8e44ad; }
+    .badge-closed   { background: #eafaf1; color: #27ae60; }
+    .badge-rejected { background: #fdedec; color: #e74c3c; }
+
+    /* 進捗テーブル */
+    .leads-table { width: 100%; border-collapse: collapse; }
+    .leads-table th {
+      background: #f0f4f8; text-align: left;
+      padding: 10px 12px; font-size: 0.82rem; color: #1a3a5c;
+    }
+    .leads-table td { padding: 10px 12px; font-size: 0.85rem; border-bottom: 1px solid #f0f0f0; }
+    .leads-table tr:hover td { background: #fafbfc; }
+
+    /* 追加フォーム */
+    .add-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+    .add-form input { padding: 8px 12px; border: 1px solid #dde3ea; border-radius: 8px; font-size: 0.85rem; }
+    .add-form .btn-sm { padding: 8px 18px; background: #1a3a5c; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+
+    .progress-bar { height: 8px; background: #e5e9ee; border-radius: 4px; margin-bottom: 24px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #2e86c1, #06c755); border-radius: 4px; transition: width 0.5s; }
+    .progress-label { font-size: 0.82rem; color: #7f8c8d; margin-bottom: 6px; }
+
+    @media (max-width: 768px) {
+      .sales-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <span class="nav-brand">AIアシスタント管理</span>
+    <div class="nav-links">
+      <a href="/admin">設定</a>
+      <a href="/admin/faqs">FAQ管理</a>
+      <a href="/admin/logs">会話ログ</a>
+      <a href="/admin/inquiries">問い合わせ</a>
+      <a href="/admin/sales" style="font-weight:bold;">営業支援</a>
+      <a href="/admin/sales/generate-all">一括メール生成</a>
+      <a href="/admin/logout" class="btn-logout">ログアウト</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>営業支援エージェント</h2>
+
+    <!-- Gmail連携状態 -->
+    <% if (locals.query && locals.query.gmail === 'connected') { %>
+      <div style="background:#e8f8f5;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#1abc9c;font-weight:700;">
+        ✅ Gmailの連携が完了しました。メールをアプリから直接送信できます。
+      </div>
+    <% } else if (locals.query && locals.query.error === 'auth_failed') { %>
+      <div style="background:#fdedec;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#e74c3c;font-weight:700;">
+        ❌ Google認証に失敗しました。再度お試しください。
+      </div>
+    <% } %>
+    <div style="margin-bottom:20px;">
+      <a href="/auth/google" style="display:inline-block;background:#4285f4;color:white;padding:9px 20px;border-radius:8px;font-weight:700;font-size:0.88rem;text-decoration:none;">
+        🔗 Gmailと連携する（初回のみ）
+      </a>
+    </div>
+
+    <!-- 進捗サマリー -->
+    <%
+      const total = leads.length;
+      const closed = leads.filter(l => l.status === 'closed').length;
+      const sent = leads.filter(l => l.status === 'sent').length;
+      const active = leads.filter(l => ['replied','meeting'].includes(l.status)).length;
+      const pct = total > 0 ? Math.round(closed / 20 * 100) : 0;
+    %>
+    <div class="card" style="margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      <div style="display:flex; gap:32px; flex-wrap:wrap;">
+        <div><div style="font-size:1.8rem;font-weight:900;color:#1a3a5c;"><%= total %></div><div style="font-size:0.8rem;color:#7f8c8d;">営業先リスト</div></div>
+        <div><div style="font-size:1.8rem;font-weight:900;color:#2e86c1;"><%= sent %></div><div style="font-size:0.8rem;color:#7f8c8d;">送信済み</div></div>
+        <div><div style="font-size:1.8rem;font-weight:900;color:#8e44ad;"><%= active %></div><div style="font-size:0.8rem;color:#7f8c8d;">アクティブ商談</div></div>
+        <div><div style="font-size:1.8rem;font-weight:900;color:#27ae60;"><%= closed %></div><div style="font-size:0.8rem;color:#7f8c8d;">成約済み</div></div>
+        <div><div style="font-size:1.8rem;font-weight:900;color:#f39c12;">¥<%= (closed * 10000).toLocaleString() %></div><div style="font-size:0.8rem;color:#7f8c8d;">月額売上（想定）</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="/admin/sales/view-emails" style="display:inline-block;background:#7f8c8d;color:white;padding:10px 18px;border-radius:10px;font-weight:700;font-size:0.9rem;text-decoration:none;white-space:nowrap;">生成済みを表示</a>
+        <a href="/admin/sales/generate-all" style="display:inline-block;background:#2e86c1;color:white;padding:10px 22px;border-radius:10px;font-weight:700;font-size:0.9rem;text-decoration:none;white-space:nowrap;">✨ 次の30件を生成</a>
+      </div>
+      </div>
+      <div class="progress-label">月20万円達成まで（目標：20社）<%= pct %>%</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:<%= pct %>%"></div></div>
+    </div>
+
+    <!-- フォローアップ通知 -->
+    <% if (locals.query && locals.query.followup_none) { %>
+      <div style="background:#fef9e7;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#f39c12;font-weight:700;">
+        📭 フォローアップ対象の事務所はありません（送信済みから7日未経過）
+      </div>
+    <% } %>
+    <% if (followupCount > 0) { %>
+      <div style="background:white;border-radius:16px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.06);border-left:4px solid #e74c3c;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:1rem;font-weight:800;color:#1a3a5c;">🔄 フォローアップ対象: <span style="color:#e74c3c;"><%= followupCount %>件</span></div>
+          <div style="font-size:0.82rem;color:#7f8c8d;margin-top:4px;">送信済みから7日以上経過・未返信の事務所</div>
+        </div>
+        <a href="/admin/sales/generate-followup" style="background:#e74c3c;color:white;padding:11px 24px;border-radius:10px;font-weight:700;font-size:0.9rem;text-decoration:none;white-space:nowrap;">
+          ✉ フォローアップを一括生成
+        </a>
+      </div>
+    <% } %>
+
+    <!-- インポート結果通知 -->
+    <% if (locals.query && locals.query.import_added) { %>
+      <div style="background:#e8f8f5;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#1abc9c;font-weight:700;">
+        ✅ <%= locals.query.import_added %>件インポート完了（重複スキップ: <%= locals.query.import_skipped %>件）
+      </div>
+    <% } else if (locals.query && locals.query.error === 'import_failed') { %>
+      <div style="background:#fdedec;border-radius:10px;padding:12px 18px;margin-bottom:16px;color:#e74c3c;font-weight:700;">
+        ❌ インポートに失敗しました。
+      </div>
+    <% } %>
+
+    <!-- 収集済みリストインポートパネル -->
+    <div style="background:white;border-radius:16px;padding:20px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.06);border-left:4px solid #8e44ad;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-size:1rem;font-weight:800;color:#1a3a5c;">📋 収集済み営業リスト</div>
+          <div style="font-size:0.82rem;color:#7f8c8d;margin-top:4px;">税理士・会計事務所 | 重複は自動スキップ</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button onclick="previewLeads()" style="background:#8e44ad;color:white;padding:9px 20px;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">プレビュー</button>
+          <form action="/admin/sales/import-hyogo" method="POST" style="margin:0;" onsubmit="return confirm('255件を営業リストにインポートします。重複は自動スキップされます。よろしいですか？')">
+            <button type="submit" style="background:#1a3a5c;color:white;padding:9px 20px;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">一括インポート</button>
+          </form>
+          <form action="/admin/sales/patch-hp-urls" method="POST" style="margin:0;" onsubmit="return confirm('CSVのHP URLを既存レコードのメモ欄に反映します。よろしいですか？')">
+            <button type="submit" style="background:#27ae60;color:white;padding:9px 20px;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;">HP URLを反映</button>
+          </form>
+        </div>
+      </div>
+      <!-- プレビューテーブル -->
+      <div id="leads-preview" style="display:none;margin-top:16px;">
+        <div id="preview-loading" style="text-align:center;padding:20px;color:#7f8c8d;">読み込み中...</div>
+        <div id="preview-content"></div>
+      </div>
+    </div>
+
+    <!-- エージェントカード -->
+    <div class="sales-grid">
+
+      <!-- 営業メール -->
+      <div class="agent-card">
+        <h3>📧 営業メールライター</h3>
+        <p>事務所名を入れるだけで個別営業メールを自動生成</p>
+        <input type="text" id="ce-office" placeholder="事務所名（例：山田税理士事務所）">
+        <div class="form-row">
+          <input type="text" id="ce-name" placeholder="担当者名（任意）">
+          <input type="text" id="ce-pref" placeholder="都道府県（任意）">
+        </div>
+        <button class="btn-agent" onclick="generate('cold_email','ce')">✨ メールを生成する</button>
+        <input type="email" id="ce-email" placeholder="送信先メールアドレス（任意）" style="margin-top:8px;">
+        <div class="result-box" id="ce-result">
+          <button class="btn-gmail" onclick="openGmail('ce-text', document.getElementById('ce-email').value)">Gmailで送る</button>
+          <button class="btn-copy" onclick="copyText('ce-text')">コピー</button>
+          <pre id="ce-text"></pre>
+        </div>
+      </div>
+
+      <!-- 初月無料訴求メール -->
+      <div class="agent-card" style="border-top-color:#e67e22;">
+        <h3>🎁 初月無料アピールメール</h3>
+        <p>「初月完全無料」を前面に出した営業メール。リスクゼロの訴求で返信率を高めます。</p>
+        <input type="text" id="mo-office" placeholder="事務所名（例：山田税理士事務所）">
+        <input type="email" id="mo-email" placeholder="送信先メールアドレス（任意）" style="margin-top:8px;">
+        <button class="btn-agent" style="background:#e67e22;" onclick="generate('monitor','mo')">✨ モニター募集メールを生成</button>
+        <div class="result-box" id="mo-result">
+          <button class="btn-gmail" onclick="openGmail('mo-text', document.getElementById('mo-email').value)">Gmailで送る</button>
+          <button class="btn-copy" onclick="copyText('mo-text')">コピー</button>
+          <pre id="mo-text"></pre>
+        </div>
+      </div>
+
+      <!-- フォローアップ -->
+      <div class="agent-card">
+        <h3>🔄 フォローアップライター</h3>
+        <p>返信がない時の自然な追いメールを生成</p>
+        <input type="text" id="fu-office" placeholder="事務所名">
+        <input type="text" id="fu-name" placeholder="担当者名（任意）">
+        <input type="email" id="fu-email" placeholder="送信先メールアドレス（任意）" style="margin-top:8px;">
+        <button class="btn-agent" onclick="generate('followup','fu')">✨ フォローアップを生成</button>
+        <div class="result-box" id="fu-result">
+          <button class="btn-gmail" onclick="openGmail('fu-text', document.getElementById('fu-email').value)">Gmailで送る</button>
+          <button class="btn-copy" onclick="copyText('fu-text')">コピー</button>
+          <pre id="fu-text"></pre>
+        </div>
+      </div>
+
+      <!-- 提案書 -->
+      <div class="agent-card">
+        <h3>📋 提案書ライター</h3>
+        <p>商談後の提案メール本文を生成</p>
+        <input type="text" id="pr-office" placeholder="事務所名">
+        <div class="form-row">
+          <input type="text" id="pr-name" placeholder="担当者名（任意）">
+          <input type="text" id="pr-size" placeholder="規模（例：3名）">
+        </div>
+        <input type="email" id="pr-email" placeholder="送信先メールアドレス（任意）" style="margin-top:8px;">
+        <button class="btn-agent" onclick="generate('proposal','pr')">✨ 提案書を生成する</button>
+        <div class="result-box" id="pr-result">
+          <button class="btn-gmail" onclick="openGmail('pr-text', document.getElementById('pr-email').value)">Gmailで送る</button>
+          <button class="btn-copy" onclick="copyText('pr-text')">コピー</button>
+          <pre id="pr-text"></pre>
+        </div>
+      </div>
+
+      <!-- 営業先追加 -->
+      <div class="agent-card">
+        <h3>➕ 営業先を追加</h3>
+        <p>新しい営業先をリストに追加する</p>
+        <form action="/admin/sales/add" method="POST">
+          <input type="text" name="office" placeholder="事務所名 ※必須" required style="margin-bottom:8px;">
+          <div class="form-row">
+            <input type="text" name="contact_name" placeholder="担当者名">
+            <input type="email" name="email" placeholder="メールアドレス">
+          </div>
+          <input type="text" name="notes" placeholder="メモ（任意）">
+          <button type="submit" class="btn-agent" style="margin-top:4px;">リストに追加する</button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- 営業進捗リスト -->
+    <div class="card">
+      <h3 style="margin-bottom:16px;">📊 営業進捗リスト（<%= leads.length %>件）</h3>
+      <% if (leads.length === 0) { %>
+        <p class="empty">まだ営業先が登録されていません。上のフォームから追加してください。</p>
+      <% } else { %>
+        <div style="overflow-x:auto;">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>事務所名</th>
+                <th>担当者</th>
+                <th>メール</th>
+                <th>ステータス</th>
+                <th>メモ</th>
+                <th>更新日</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% leads.forEach(lead => { %>
+              <tr>
+                <td><strong><%= lead.office %></strong></td>
+                <td><%= lead.contact_name || '—' %></td>
+                <td>
+                  <% if (lead.email) { %>
+                    <a href="https://mail.google.com/mail/?view=cm&to=<%= encodeURIComponent(lead.email) %>" target="_blank" style="font-size:0.82rem;"><%= lead.email %></a>
+                  <% } else { %>—<% } %>
+                </td>
+                <td>
+                  <% const badges = {pending:'badge-pending',sent:'badge-sent',replied:'badge-replied',meeting:'badge-meeting',closed:'badge-closed',rejected:'badge-rejected'}; %>
+                  <% const labels = {pending:'未送信',sent:'送信済',replied:'返信あり',meeting:'商談中',closed:'成約',rejected:'見送り'}; %>
+                  <span class="badge <%= badges[lead.status] || 'badge-pending' %>"><%= labels[lead.status] || lead.status %></span>
+                </td>
+                <td style="max-width:160px;font-size:0.82rem;color:#7f8c8d;"><%= lead.notes || '—' %></td>
+                <td style="font-size:0.78rem;color:#aaa;"><%= new Date(lead.updated_at).toLocaleDateString('ja-JP') %></td>
+                <td>
+                  <form action="/admin/sales/update" method="POST" style="display:inline;">
+                    <input type="hidden" name="id" value="<%= lead.id %>">
+                    <input type="hidden" name="notes" value="<%= lead.notes || '' %>">
+                    <select name="status" onchange="this.form.submit()" style="font-size:0.78rem;padding:3px 6px;border:1px solid #dde3ea;border-radius:6px;">
+                      <option value="pending"  <%= lead.status==='pending'  ?'selected':'' %>>未送信</option>
+                      <option value="sent"     <%= lead.status==='sent'     ?'selected':'' %>>送信済</option>
+                      <option value="replied"  <%= lead.status==='replied'  ?'selected':'' %>>返信あり</option>
+                      <option value="meeting"  <%= lead.status==='meeting'  ?'selected':'' %>>商談中</option>
+                      <option value="closed"   <%= lead.status==='closed'   ?'selected':'' %>>成約</option>
+                      <option value="rejected" <%= lead.status==='rejected' ?'selected':'' %>>見送り</option>
+                    </select>
+                  </form>
+                  <form action="/admin/sales/delete" method="POST" style="display:inline;" onsubmit="return confirm('削除しますか？')">
+                    <input type="hidden" name="id" value="<%= lead.id %>">
+                    <button type="submit" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.8rem;margin-left:6px;">削除</button>
+                  </form>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    async function generate(agentType, prefix) {
+      const office = document.getElementById(prefix + '-office').value;
+      if (!office) { alert('事務所名を入力してください'); return; }
+
+      const btn = event.target;
+      btn.textContent = '生成中...';
+      btn.disabled = true;
+
+      const body = {
+        agent_type: agentType,
+        office,
+        contact_name: (document.getElementById(prefix + '-name') || {}).value || '',
+        prefecture: (document.getElementById(prefix + '-pref') || {}).value || '',
+        size: (document.getElementById(prefix + '-size') || {}).value || '',
+      };
+
+      try {
+        const res = await fetch('/admin/sales/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        const resultBox = document.getElementById(prefix + '-result');
+        const textEl = document.getElementById(prefix + '-text');
+        if (data.error) {
+          textEl.textContent = 'エラー: ' + data.error;
+        } else {
+          textEl.textContent = data.result;
+        }
+        resultBox.style.display = 'block';
+      } catch(e) {
+        alert('通信エラーが発生しました');
+      } finally {
+        btn.textContent = btn.textContent.includes('メール') ? '✨ メールを生成する' :
+                          btn.textContent.includes('フォロー') ? '✨ フォローアップを生成' : '✨ 提案書を生成する';
+        btn.disabled = false;
+      }
+    }
+
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        btn.textContent = '✓ コピー済';
+        setTimeout(() => btn.textContent = 'コピー', 1500);
+      });
+    }
+
+    async function openGmail(textId, toEmail) {
+      const text = document.getElementById(textId).textContent;
+      const lines = text.split('\n');
+      let subject = '';
+      const bodyLines = [];
+      let subjectFound = false;
+      for (const line of lines) {
+        if (!subjectFound && /^件名[：:]/.test(line)) {
+          subject = line.replace(/^件名[：:]\s*/, '').trim();
+          subjectFound = true;
+        } else if (subjectFound) {
+          bodyLines.push(line);
+        }
+      }
+      const body = bodyLines.join('\n').trim();
+
+      if (!toEmail) {
+        alert('送信先メールアドレスを入力してください');
+        return;
+      }
+
+      const btn = event.target;
+      btn.textContent = '送信中...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/admin/sales/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: toEmail, subject, body }),
+        });
+        const data = await res.json();
+        if (data.needAuth) {
+          if (confirm('Gmailとまだ連携していません。今すぐ連携しますか？')) {
+            location.href = '/auth/google';
+          }
+        } else if (data.success) {
+          btn.textContent = '✓ 送信完了';
+          btn.style.background = '#27ae60';
+        } else {
+          alert('送信エラー: ' + data.error);
+          btn.textContent = 'Gmailで送る';
+          btn.disabled = false;
+        }
+      } catch(e) {
+        alert('通信エラーが発生しました');
+        btn.textContent = 'Gmailで送る';
+        btn.disabled = false;
+      }
+    }
+  </script>
+  <script>
+    async function previewLeads() {
+      const panel = document.getElementById('leads-preview');
+      const loading = document.getElementById('preview-loading');
+      const content = document.getElementById('preview-content');
+      panel.style.display = 'block';
+      loading.style.display = 'block';
+      content.innerHTML = '';
+      try {
+        const res = await fetch('/admin/sales/leads-preview');
+        const data = await res.json();
+        loading.style.display = 'none';
+        if (data.error) { content.innerHTML = `<p style="color:#e74c3c">${data.error}</p>`; return; }
+        content.innerHTML = `
+          <div style="margin-bottom:10px;font-size:0.85rem;color:#7f8c8d;">
+            全${data.total}件 ／ 新規インポート対象: <strong style="color:#8e44ad">${data.newCount}件</strong>（既存重複除く） ／ 先頭50件を表示
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #dde3ea;">事務所名</th>
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #dde3ea;">メールアドレス</th>
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #dde3ea;">電話番号</th>
+                  <th style="padding:8px;text-align:left;border-bottom:1px solid #dde3ea;">状態</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.records.map(r => `
+                  <tr style="opacity:${r.isDuplicate ? 0.4 : 1};background:${r.isDuplicate ? '#f8f8f8' : 'white'}">
+                    <td style="padding:7px 8px;border-bottom:1px solid #f0f0f0;">${r.office}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #f0f0f0;">${r.email || '<span style="color:#aaa">なし</span>'}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #f0f0f0;">${r.phone || '-'}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #f0f0f0;">${r.isDuplicate ? '<span style="color:#aaa">重複</span>' : '<span style="color:#27ae60">新規</span>'}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        loading.style.display = 'none';
+        content.innerHTML = '<p style="color:#e74c3c">読み込みに失敗しました</p>';
+      }
+    }
+  </script>
+</body>
+</html>
